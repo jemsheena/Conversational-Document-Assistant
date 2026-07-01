@@ -1,0 +1,57 @@
+# Manual SSH test — Actions → Test EC2 SSH → Run workflow
+# Use after updating EC2_HOST, EC2_USER, EC2_SSH_KEY secrets.
+
+name: Test EC2 SSH
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-ssh:
+    name: Test EC2 SSH connection
+    runs-on: ubuntu-latest
+    env:
+      EC2_HOST: ${{ secrets.EC2_HOST }}
+      EC2_USER: ${{ secrets.EC2_USER }}
+      EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+    steps:
+      - name: Validate secrets
+        run: |
+          set -euo pipefail
+          missing=()
+          [ -z "${EC2_HOST:-}" ] && missing+=("EC2_HOST")
+          [ -z "${EC2_USER:-}" ] && missing+=("EC2_USER")
+          [ -z "${EC2_SSH_KEY:-}" ] && missing+=("EC2_SSH_KEY")
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::Missing secrets: ${missing[*]}"
+            exit 1
+          fi
+          if [[ "$EC2_HOST" == *"@"* ]]; then
+            echo "::error::EC2_HOST must be IP/DNS only, not user@host"
+            exit 1
+          fi
+          echo "host=$EC2_HOST user=$EC2_USER key_bytes=${#EC2_SSH_KEY}"
+
+      - name: Write SSH key
+        run: |
+          set -euo pipefail
+          KEY_FILE="$HOME/.ssh/ec2_deploy_key"
+          mkdir -p ~/.ssh
+          printf '%s\n' "$EC2_SSH_KEY" > "$KEY_FILE"
+          sed -i 's/\r$//' "$KEY_FILE"
+          chmod 600 "$KEY_FILE"
+          ssh-keygen -y -f "$KEY_FILE" | awk '{print "public_key_prefix:", substr($0,1,40)"..."}'
+
+      - name: SSH handshake test
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key_path: /home/runner/.ssh/ec2_deploy_key
+          port: 22
+          timeout: 60s
+          script: |
+            echo "SSH_OK"
+            whoami
+            hostname
+            uname -a

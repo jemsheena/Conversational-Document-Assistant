@@ -1,0 +1,57 @@
+{
+  "family": "rag-backend",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "arn:aws:iam::613136968993:role/ecsTaskExecutionRole",
+  "containerDefinitions": [
+    {
+      "name": "rag-backend",
+      "image": "613136968993.dkr.ecr.us-east-1.amazonaws.com/rag-backend:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "LLM_PROVIDER",
+          "value": "openai"
+        },
+        {
+          "name": "DATABASE_URL",
+          "value": "sqlite:///./rag.db"
+        },
+        {
+          "name": "DATA_DIR",
+          "value": "./data"
+        },
+        {
+          "name": "CORS_ORIGINS",
+          "value": "*"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/rag-backend",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "curl -f http://localhost:8000/health || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      }
+    }
+  ]
+}

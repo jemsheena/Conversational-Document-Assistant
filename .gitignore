@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# Data & indices
+data/
+backend/data/
+*.db
+*.faiss
+backend/data/**/*.json
+data/**/*.json
+
+# Node
+node_modules/
+dist/
+.DS_Store
+
+# Environment & secrets (never commit)
+.env
+.env.local
+.env.*
+!.env.example
+*.pem
+*.key
+deploy.local.ps1
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Documentation files to ignore
+github_markdown_files/
+
+# Deploy artifacts & tool caches
+deploy_latest.tar.gz
+.pytest_cache/
+.ruff_cache/
