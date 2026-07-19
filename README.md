@@ -18,6 +18,7 @@ A production-ready **Retrieval-Augmented Generation (RAG)** platform for chattin
 ## Table of Contents
 
 - [Overview](#overview)
+- [Motivation](#motivation)
 - [Key Features](#key-features)
 - [Architecture](#architecture)
 - [RAG Pipeline](#rag-pipeline)
@@ -31,6 +32,8 @@ A production-ready **Retrieval-Augmented Generation (RAG)** platform for chattin
 - [Testing & Quality](#testing--quality)
 - [Metrics & Observability](#metrics--observability)
 - [Security](#security)
+- [Current Implementation Status](#current-implementation-status)
+- [Roadmap](#roadmap)
 - [Documentation](#documentation)
 - [License](#license)
 
@@ -55,6 +58,12 @@ The system is designed for:
 | **Vector store** | FAISS (cosine similarity, per-collection indices) |
 | **Database** | PostgreSQL 16 |
 | **Storage** | Local disk (dev) or AWS S3 (production) |
+
+---
+
+## Motivation
+
+Searching long PDFs by hand — reports, manuals, papers — is slow, and generic chatbots answer from memory rather than from the document in front of you, which invites hallucination. This project was built to explore how a **retrieval-grounded** chat experience can be made both accurate and fast: every answer is traced back to a specific page and passage, and the retrieval pipeline (embedding → FAISS search → cross-encoder reranking) was tuned to keep end-to-end latency in the low single-digit seconds even on CPU-only hardware. It also served as a practical exercise in building a full production-style stack — auth, streaming responses, CI/CD, and cloud deployment — around a non-trivial ML component rather than a toy CRUD app.
 
 ---
 
@@ -514,7 +523,7 @@ Push to main → Lint → Test → Build Docker images → Push to GHCR → Depl
 Manual deploy fallback:
 
 ```bash
-./scripts/deploy-ec2.sh <image-tag>
+./deploy/scripts/deploy-ec2.sh <image-tag>
 ```
 
 See [`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml) for the full pipeline definition.
@@ -550,6 +559,7 @@ Conversational-Document-Assistant/
 │   │   ├── cache.py         # Query result caching
 │   │   └── utils.py         # Diversification & citation validation
 │   ├── alembic/             # Database migrations
+│   ├── scripts/             # DB init & manual smoke-test scripts
 │   ├── tests/               # Pytest suite
 │   └── Dockerfile
 ├── frontend/
@@ -558,13 +568,27 @@ Conversational-Document-Assistant/
 │   │   ├── components/      # Layout, Message, SourcesDrawer, …
 │   │   └── store/           # React context (auth, chat state)
 │   └── Dockerfile
-├── scripts/                 # EC2 deploy & verification scripts
-├── .github/workflows/       # CI/CD pipelines
+├── deploy/
+│   ├── scripts/             # EC2 deploy & verification scripts
+│   ├── ecs-*.json           # ECS task/trust policy definitions
+│   ├── deploy-aws.sh/.ps1   # AWS deploy helpers
+│   └── *.ps1                # EC2 connection/upload helpers (Windows)
+├── docs/
+│   ├── architecture.md      # System architecture & diagrams
+│   ├── design-decisions.md  # Key design decisions & rationale
+│   ├── roadmap.md           # Planned work
+│   ├── module-overview.md   # Per-module responsibilities
+│   └── screenshots/         # Application UI screenshots (README)
+├── .github/
+│   ├── workflows/           # CI/CD pipelines
+│   ├── ISSUE_TEMPLATE/      # Bug report & feature request templates
+│   └── PULL_REQUEST_TEMPLATE.md
 ├── docker-compose.yml       # Local development stack
 ├── docker-compose.prod.yml  # Production EC2 stack
-├── docs/
-│   └── screenshots/         # Application UI screenshots (README)
 ├── .env.example             # Environment template
+├── CONTRIBUTING.md          # Contribution guidelines
+├── CHANGELOG.md             # Version history
+├── CODE_OF_CONDUCT.md       # Community standards
 └── GROQ_INTEGRATION.md      # LLM provider guide
 ```
 
@@ -662,6 +686,55 @@ Structured logging for LLM requests:
 | Rate limiting | 10 chat requests/minute (configurable) |
 
 > **Important:** Change `JWT_SECRET` before any production deployment.
+
+---
+
+## Current Implementation Status
+
+This is a working, self-hosted application, actively developed and deployable end-to-end. Status by area:
+
+| Area | Status | Notes |
+|---|---|---|
+| PDF ingestion & parsing | ✅ Implemented | PyMuPDF text extraction, SHA-256 dedup |
+| Chunking & embedding | ✅ Implemented | Token-aware chunking, MiniLM-L6-v2 |
+| Vector search (FAISS) | ✅ Implemented | Per-collection `IndexFlatIP` |
+| Cross-encoder reranking | ✅ Implemented | MS MARCO MiniLM reranker |
+| Grounded generation + citations | ✅ Implemented | Streaming, citation validation |
+| Multi-provider LLM support | ✅ Implemented | Groq, OpenAI, Hugging Face, Ollama |
+| JWT auth | ✅ Implemented | Register/login/refresh, bcrypt hashing |
+| Collections & document management | ✅ Implemented | REST endpoints, UI pages |
+| Query result caching | ✅ Implemented | In-memory, 10-minute TTL |
+| Metrics endpoint | ✅ Implemented | Latency, token, retrieval-score aggregates |
+| CI pipeline (lint + test + build) | ✅ Implemented | GitHub Actions → GHCR |
+| EC2/S3 deployment scripts | ✅ Implemented | Manual + CI-triggered rollout |
+| Automated test coverage | ⚠️ Minimal | Health check + storage only; RAG pipeline untested |
+| Persistent chat history (server-side) | ⚠️ Partial | Managed client-side; not yet persisted per-user in DB |
+| Multi-tenant collection permissions | ⚠️ Basic | Owner-based access only, no sharing/roles |
+| Non-PDF document support | ❌ Not implemented | PDF only |
+| Horizontal scaling / distributed vector store | ❌ Not implemented | Single-node FAISS |
+
+---
+
+## Roadmap
+
+Planned, not yet built:
+
+- [ ] Expand automated test coverage to the RAG pipeline (chunking, retrieval, citation validation)
+- [ ] Persist conversation history server-side, scoped per user
+- [ ] Support additional document formats (DOCX, TXT, HTML)
+- [ ] Add collection-level sharing and role-based access control
+- [ ] Swap in a managed/distributed vector store (e.g. pgvector or Qdrant) as an alternative to local FAISS for multi-instance deployments
+- [ ] Add integration tests for the CI pipeline against a real Postgres service container beyond current smoke tests
+
+## Future Improvements
+
+Ideas worth exploring beyond the current roadmap:
+
+- Hybrid retrieval combining dense (FAISS) and sparse (BM25) search
+- Streaming ingestion progress over SSE/WebSocket instead of polling
+- Configurable retention/expiry policies for uploaded documents
+- Prometheus/Grafana export for the existing `/api/metrics` data
+- Per-collection embedding model selection
 
 ---
 

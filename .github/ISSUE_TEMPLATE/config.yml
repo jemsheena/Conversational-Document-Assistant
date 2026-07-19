@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://github.com/jemsheena/Conversational-Document-Assistant/tree/main/docs
+    about: Check the architecture, design decisions, and roadmap docs before filing an issue.
+  - name: General question / discussion
+    url: https://github.com/jemsheena/Conversational-Document-Assistant/discussions
+    about: For questions that aren't a bug report or feature request.

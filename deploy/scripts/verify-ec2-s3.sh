@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Configure and verify S3 PDF storage on EC2.
-# Run on the server: ./scripts/verify-ec2-s3.sh
+# Run on the server: ./deploy/scripts/verify-ec2-s3.sh
 # Or from Windows: .\SETUP_EC2_S3.ps1
 
 set -euo pipefail

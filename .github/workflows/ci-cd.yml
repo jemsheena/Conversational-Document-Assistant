@@ -14,7 +14,7 @@
 #   3. Create ~/Conversational-Document-Assistant/.env (copy from .env.example; set STORAGE_BACKEND=s3)
 #   4. Add GHCR_TOKEN to server .env if images are private
 #
-# Manual fallback: scripts/deploy-ec2.sh or UPLOAD_TO_EC2.ps1
+# Manual fallback: deploy/scripts/deploy-ec2.sh or UPLOAD_TO_EC2.ps1
 
 name: CI/CD
 
@@ -251,8 +251,8 @@ jobs:
           ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts 2>/dev/null
           scp -i "$KEY_FILE" -o BatchMode=yes docker-compose.prod.yml \
             "${EC2_USER}@${EC2_HOST}:Conversational-Document-Assistant/"
-          scp -i "$KEY_FILE" -o BatchMode=yes scripts/deploy-ec2.sh \
-            "${EC2_USER}@${EC2_HOST}:Conversational-Document-Assistant/scripts/"
+          scp -i "$KEY_FILE" -o BatchMode=yes deploy/scripts/deploy-ec2.sh \
+            "${EC2_USER}@${EC2_HOST}:Conversational-Document-Assistant/deploy/scripts/"
 
       - name: Deploy containers on EC2
         uses: appleboy/ssh-action@v1.2.0
@@ -269,8 +269,8 @@ jobs:
           script: |
             set -euo pipefail
             APP_DIR="$HOME/Conversational-Document-Assistant"
-            mkdir -p "$APP_DIR/backend/data" "$APP_DIR/scripts"
-            sed -i 's/\r$//' "$APP_DIR/scripts/deploy-ec2.sh" 2>/dev/null || true
-            chmod +x "$APP_DIR/scripts/deploy-ec2.sh"
+            mkdir -p "$APP_DIR/backend/data" "$APP_DIR/deploy/scripts"
+            sed -i 's/\r$//' "$APP_DIR/deploy/scripts/deploy-ec2.sh" 2>/dev/null || true
+            chmod +x "$APP_DIR/deploy/scripts/deploy-ec2.sh"
             cd "$APP_DIR"
-            REGISTRY=ghcr.io REPO_OWNER="$REPO_OWNER" ./scripts/deploy-ec2.sh "$IMAGE_TAG"
+            REGISTRY=ghcr.io REPO_OWNER="$REPO_OWNER" ./deploy/scripts/deploy-ec2.sh "$IMAGE_TAG"

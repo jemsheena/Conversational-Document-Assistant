@@ -47,5 +47,7 @@ github_markdown_files/
 
 # Deploy artifacts & tool caches
 deploy_latest.tar.gz
+frontend_deploy_latest.tar.gz
+*.tar.gz
 .pytest_cache/
 .ruff_cache/
