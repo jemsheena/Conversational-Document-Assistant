@@ -7,7 +7,7 @@ REPO_OWNER="${REPO_OWNER:?REPO_OWNER is required (GitHub username or org)}"
 APP_DIR="${APP_DIR:-$HOME/Conversational-Document-Assistant}"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
 
-mkdir -p "$APP_DIR/backend/data" "$APP_DIR/scripts"
+mkdir -p "$APP_DIR/backend/data" "$APP_DIR/deploy/scripts"
 cd "$APP_DIR"
 
 if [ ! -f "$COMPOSE_FILE" ]; then

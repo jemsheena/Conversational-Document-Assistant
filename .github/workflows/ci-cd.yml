@@ -239,7 +239,7 @@ jobs:
           key_path: /home/runner/.ssh/ec2_deploy_key
           port: 22
           timeout: 60s
-          script: mkdir -p ~/Conversational-Document-Assistant/scripts
+          script: mkdir -p ~/Conversational-Document-Assistant/deploy/scripts
 
       - name: Copy deploy files to EC2
         env:

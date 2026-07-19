@@ -28,10 +28,10 @@ if (-not (Test-Path $SCRIPT)) {
 }
 
 Write-Host "Uploading verify-ec2-s3.sh to EC2..." -ForegroundColor Cyan
-ssh -i $KEY_PATH $EC2_HOST "mkdir -p ~/Conversational-Document-Assistant/scripts"
-scp -i $KEY_PATH $SCRIPT "${EC2_HOST}:~/Conversational-Document-Assistant/scripts/verify-ec2-s3.sh"
+ssh -i $KEY_PATH $EC2_HOST "mkdir -p ~/Conversational-Document-Assistant/deploy/scripts"
+scp -i $KEY_PATH $SCRIPT "${EC2_HOST}:~/Conversational-Document-Assistant/deploy/scripts/verify-ec2-s3.sh"
 
 Write-Host "Running S3 setup and verification on EC2..." -ForegroundColor Cyan
-ssh -i $KEY_PATH $EC2_HOST "chmod +x ~/Conversational-Document-Assistant/scripts/verify-ec2-s3.sh && ~/Conversational-Document-Assistant/scripts/verify-ec2-s3.sh"
+ssh -i $KEY_PATH $EC2_HOST "chmod +x ~/Conversational-Document-Assistant/deploy/scripts/verify-ec2-s3.sh && ~/Conversational-Document-Assistant/deploy/scripts/verify-ec2-s3.sh"
 
 Write-Host "`nS3 setup complete." -ForegroundColor Green
