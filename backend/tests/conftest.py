@@ -15,7 +15,7 @@ os.environ["DATA_DIR"] = _test_data_dir
 
 def pytest_configure(config):
     """Create schema before test modules import the FastAPI app."""
-    from init_db import init_db
+    from scripts.init_db import init_db
 
     last_error = None
     for _ in range(15):
