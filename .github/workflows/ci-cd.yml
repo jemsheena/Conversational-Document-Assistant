@@ -249,9 +249,11 @@ jobs:
           set -euo pipefail
           KEY_FILE="$HOME/.ssh/ec2_deploy_key"
           ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts 2>/dev/null
-          scp -i "$KEY_FILE" -o BatchMode=yes docker-compose.prod.yml \
+          # Force the legacy SCP protocol: some hardened/minimal EC2 images do not
+          # expose the SFTP subsystem used by newer OpenSSH clients by default.
+          scp -O -i "$KEY_FILE" -o BatchMode=yes docker-compose.prod.yml \
             "${EC2_USER}@${EC2_HOST}:Conversational-Document-Assistant/"
-          scp -i "$KEY_FILE" -o BatchMode=yes deploy/scripts/deploy-ec2.sh \
+          scp -O -i "$KEY_FILE" -o BatchMode=yes deploy/scripts/deploy-ec2.sh \
             "${EC2_USER}@${EC2_HOST}:Conversational-Document-Assistant/deploy/scripts/"
 
       - name: Deploy containers on EC2
