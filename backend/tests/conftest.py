@@ -2,6 +2,11 @@ import os
 import tempfile
 import time
 
+import pytest
+
+from app.config import settings
+from rag.store import _stores
+
 _test_data_dir = tempfile.mkdtemp(prefix="rag-test-")
 
 # Defaults for local dev — CI sets DATABASE_URL via workflow env (port 5432).
@@ -29,3 +34,67 @@ def pytest_configure(config):
     raise RuntimeError(
         "PostgreSQL is required for tests. Start it with: docker compose up -d postgres"
     ) from last_error
+
+
+@pytest.fixture
+def fake_cl100k_encoding(monkeypatch):
+    class FakeEncoding:
+        def encode(self, text):
+            return list(text)
+
+        def decode(self, tokens):
+            return "".join(tokens)
+
+    encoding = FakeEncoding()
+    monkeypatch.setattr("rag.chunk.tiktoken.get_encoding", lambda _name: encoding)
+    return encoding
+
+
+@pytest.fixture
+def isolated_faiss_index_dir(monkeypatch, tmp_path):
+    monkeypatch.setattr(settings, "INDEX_DIR", str(tmp_path))
+    _stores.clear()
+    yield tmp_path
+    _stores.clear()
+
+
+@pytest.fixture
+def fake_current_user():
+    return {
+        "id": "user_1",
+        "name": "Test User",
+        "email": "user@example.com",
+        "role": "user",
+    }
+
+
+@pytest.fixture
+def chat_test_client(monkeypatch, fake_current_user):
+    from fastapi.testclient import TestClient
+
+    class FakeCrossEncoder:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def predict(self, pairs):
+            return []
+
+    monkeypatch.setattr("sentence_transformers.CrossEncoder", FakeCrossEncoder)
+    
+    from app.deps import get_current_user
+    from app.main import app
+
+    monkeypatch.setattr("app.main.init_database", lambda: [])
+
+    original_overrides = app.dependency_overrides.copy()
+
+    def override_get_current_user():
+        return fake_current_user
+
+    app.dependency_overrides[get_current_user] = override_get_current_user
+
+    try:
+        with TestClient(app) as client:
+            yield client
+    finally:
+        app.dependency_overrides = original_overrides

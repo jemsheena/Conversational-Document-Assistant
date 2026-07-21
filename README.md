@@ -608,6 +608,10 @@ pytest tests/ -v
 |---|---|
 | `test_health.py` | Health endpoint returns 200 |
 | `test_storage.py` | Local PDF save/load/delete |
+| `test_chunk.py` | Token chunking boundaries, overlap, and edge cases |
+| `test_store.py` | FAISS add/search round-trip, cosine ranking, collection isolation |
+| `test_utils.py` | Citation validation and passage diversification |
+| `test_chat.py` | SSE chat contract with mocked retrieval and LLM streaming |
 
 ### Frontend
 
@@ -707,7 +711,7 @@ This is a working, self-hosted application, actively developed and deployable en
 | Metrics endpoint | ✅ Implemented | Latency, token, retrieval-score aggregates |
 | CI pipeline (lint + test + build) | ✅ Implemented | GitHub Actions → GHCR |
 | EC2/S3 deployment scripts | ✅ Implemented | Manual + CI-triggered rollout |
-| Automated test coverage | ⚠️ Minimal | Health check + storage only; RAG pipeline untested |
+| Automated test coverage | ⚠️ Expanded | Health, storage, chunking, FAISS store, citation/diversification, and chat SSE; PDF parsing, embeddings, reranking, and ingest still need coverage |
 | Persistent chat history (server-side) | ⚠️ Partial | Managed client-side; not yet persisted per-user in DB |
 | Multi-tenant collection permissions | ⚠️ Basic | Owner-based access only, no sharing/roles |
 | Non-PDF document support | ❌ Not implemented | PDF only |
@@ -719,7 +723,7 @@ This is a working, self-hosted application, actively developed and deployable en
 
 Planned, not yet built:
 
-- [ ] Expand automated test coverage to the RAG pipeline (chunking, retrieval, citation validation)
+- [ ] Extend automated test coverage to the remaining RAG surfaces (PDF parsing, embeddings, reranking, and ingest flows)
 - [ ] Persist conversation history server-side, scoped per user
 - [ ] Support additional document formats (DOCX, TXT, HTML)
 - [ ] Add collection-level sharing and role-based access control
