@@ -4,9 +4,6 @@ import time
 
 import pytest
 
-from app.config import settings
-from rag.store import _stores
-
 _test_data_dir = tempfile.mkdtemp(prefix="rag-test-")
 
 # Defaults for local dev — CI sets DATABASE_URL via workflow env (port 5432).
@@ -52,6 +49,9 @@ def fake_cl100k_encoding(monkeypatch):
 
 @pytest.fixture
 def isolated_faiss_index_dir(monkeypatch, tmp_path):
+    from app.config import settings
+    from rag.store import _stores
+
     monkeypatch.setattr(settings, "INDEX_DIR", str(tmp_path))
     _stores.clear()
     yield tmp_path
@@ -80,7 +80,7 @@ def chat_test_client(monkeypatch, fake_current_user):
             return []
 
     monkeypatch.setattr("sentence_transformers.CrossEncoder", FakeCrossEncoder)
-    
+
     from app.deps import get_current_user
     from app.main import app
 
@@ -97,4 +97,5 @@ def chat_test_client(monkeypatch, fake_current_user):
         with TestClient(app) as client:
             yield client
     finally:
-        app.dependency_overrides = original_overrides
+        app.dependency_overrides.clear()
+        app.dependency_overrides.update(original_overrides)
