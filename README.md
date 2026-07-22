@@ -26,6 +26,7 @@ A production-ready **Retrieval-Augmented Generation (RAG)** platform for chattin
 - [Screenshots](#screenshots)
 - [Quick Start](#quick-start)
 - [Configuration](#configuration)
+- [Optional Automation with n8n](#optional-automation-with-n8n)
 - [API Reference](#api-reference)
 - [Deployment](#deployment)
 - [Project Structure](#project-structure)
@@ -390,6 +391,27 @@ cd frontend
 npm install
 npm run dev
 # Opens at http://localhost:5173
+```
+
+---
+
+## Optional Automation with n8n
+
+If you want to trigger document ingestion from an external workflow or webhook, start the optional automation profile:
+
+```bash
+docker compose --profile automation up -d
+```
+
+This exposes n8n at http://localhost:5678. Import the workflow from [automation/n8n/ingest-notification-workflow.json](automation/n8n/ingest-notification-workflow.json) to forward uploads to the backend ingest endpoint, then notify Slack or another destination after the run completes.
+
+Useful environment values for the automation stack include:
+
+```env
+BACKEND_URL=http://backend:8000
+BACKEND_AUTH_TOKEN=your-token
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...
+N8N_ENCRYPTION_KEY=change-me-in-production
 ```
 
 ---
