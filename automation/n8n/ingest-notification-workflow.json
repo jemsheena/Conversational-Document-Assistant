@@ -1,0 +1,168 @@
+{
+  "name": "Ingestion Notification Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ingest-trigger",
+        "responseMode": "onReceived"
+      },
+      "id": "b8b8d2cb-8b8c-4b6d-a5cb-9b61dbb4d7d1",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        260,
+        300
+      ],
+      "webhookId": "ingest-trigger"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.BACKEND_URL || 'http://backend:8000'}}/api/ingest",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "sendHeaders": true,
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "Authorization",
+              "value": "={{`Bearer ${$env.BACKEND_AUTH_TOKEN}`}}"
+            }
+          ]
+        },
+        "bodyParametersUi": {
+          "parameter": [
+            {
+              "name": "collection",
+              "value": "={{$json.body.collection || $json.collection || 'default'}}"
+            }
+          ]
+        },
+        "sendBinaryData": true,
+        "binaryPropertyName": "files",
+        "options": {
+          "fullResponse": true,
+          "ignoreResponseCode": true
+        }
+      },
+      "id": "9cb4d5c8-4cf8-4f25-8b44-fca598c5b5d5",
+      "name": "Forward to Ingest API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        540,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json.statusCode}}",
+              "operation": "largerEqual",
+              "value2": 200
+            },
+            {
+              "value1": "={{$json.statusCode}}",
+              "operation": "smaller",
+              "value2": 300
+            }
+          ]
+        }
+      },
+      "id": "6f2d1f68-b1c7-4d6e-97f8-6a5d9f6a5df7",
+      "name": "Ingestion Succeeded?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        780,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SLACK_WEBHOOK_URL}}",
+        "sendBody": true,
+        "contentType": "json",
+        "jsonParameters": true,
+        "bodyParametersJson": "={{ JSON.stringify({ text: `✅ Ingestion succeeded for collection ${$node[\"Webhook Trigger\"].json.body.collection || $node[\"Webhook Trigger\"].json.collection || 'default'}, file ${$node[\"Webhook Trigger\"].binary.files.fileName || 'upload.pdf'}` }) }}"
+      },
+      "id": "df53f4a8-0f5a-45c8-b9a5-6ca31ecf6e7a",
+      "name": "Notify Slack Success",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1040,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SLACK_WEBHOOK_URL}}",
+        "sendBody": true,
+        "contentType": "json",
+        "jsonParameters": true,
+        "bodyParametersJson": "={{ JSON.stringify({ text: `❌ Ingestion failed for collection ${$node[\"Webhook Trigger\"].json.body.collection || $node[\"Webhook Trigger\"].json.collection || 'default'} — status ${$json.statusCode || 'unknown'}: ${$json.body?.detail || $json.body?.message || JSON.stringify($json.body || $json.error || 'Unknown error')}` }) }}"
+      },
+      "id": "71ebc6f5-7e06-4d2f-b4c7-e4f4e6d67f17",
+      "name": "Notify Slack Failure",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1040,
+        420
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Forward to Ingest API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Forward to Ingest API": {
+      "main": [
+        [
+          {
+            "node": "Ingestion Succeeded?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ingestion Succeeded?": {
+      "main": [
+        [
+          {
+            "node": "Notify Slack Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify Slack Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "pinData": {},
+  "versionId": "1"
+}

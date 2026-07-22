@@ -1,6 +1,6 @@
 import os
 import tempfile
-import time
+import warnings
 
 import pytest
 
@@ -17,6 +17,18 @@ os.environ["DATA_DIR"] = _test_data_dir
 
 def pytest_configure(config):
     """Create schema before test modules import the FastAPI app."""
+    require_db = os.getenv("REQUIRE_TEST_DB", "").lower() in {"1", "true", "yes"}
+    if not require_db:
+        warnings.warn(
+            "PostgreSQL bootstrap is disabled for this test run. "
+            "Set REQUIRE_TEST_DB=1 to require database initialization.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        return
+
+    import time
+
     from scripts.init_db import init_db
 
     last_error = None
@@ -56,6 +68,15 @@ def isolated_faiss_index_dir(monkeypatch, tmp_path):
     _stores.clear()
     yield tmp_path
     _stores.clear()
+
+
+@pytest.fixture(autouse=True)
+def clear_rag_cache():
+    from rag.cache import clear_cache
+
+    clear_cache()
+    yield
+    clear_cache()
 
 
 @pytest.fixture

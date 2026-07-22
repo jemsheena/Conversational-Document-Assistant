@@ -42,7 +42,7 @@ services:
       - S3_BUCKET=${S3_BUCKET:-}
       - S3_PREFIX=${S3_PREFIX:-pdfs/}
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:5173}
-      - JWT_SECRET=${JWT_SECRET:-change-this-in-production}
+      - JWT_SECRET=${JWT_SECRET}
     volumes:
       - ./backend/data:/app/data
     depends_on:
@@ -69,5 +69,31 @@ services:
       - backend
     restart: unless-stopped
 
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: rag-n8n
+    profiles:
+      - automation
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=${N8N_HOST:-localhost}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=${N8N_PROTOCOL:-http}
+      - N8N_EDITOR_BASE_URL=${N8N_EDITOR_BASE_URL:-http://localhost:5678}
+      - N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL:-http://localhost:5678/}
+      - BACKEND_URL=${BACKEND_URL:-http://backend:8000}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+      - BACKEND_AUTH_TOKEN=${BACKEND_AUTH_TOKEN:-}
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-change-me-in-production}
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=${N8N_BLOCK_ENV_ACCESS_IN_NODE:-false}
+      - N8N_DIAGNOSTICS_ENABLED=false
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      - backend
+    restart: unless-stopped
+
 volumes:
   postgres_data:
+  n8n_data:
