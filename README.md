@@ -504,7 +504,7 @@ Interactive documentation: **http://localhost:8000/docs**
 | Method | Endpoint | Description |
 |---|---|---|
 | `GET/POST` | `/api/collections` | Manage document collections |
-| `GET` | `/api/metrics` | Aggregated latency, token, and retrieval stats |
+| `GET` | `/api/metrics` | Aggregated `latency_ms`, `tokens`, and `retrieval_scores` stats |
 | `GET` | `/health` | Service health check |
 
 ---
@@ -658,7 +658,13 @@ npm run build
 
 ### Built-in Metrics Endpoint
 
-`GET /api/metrics` returns aggregated statistics:
+`GET /api/metrics` returns aggregated statistics for:
+
+- `latency_ms`: `mean`, `p95`, `count`
+- `tokens`: `total_in`, `total_out`, `count`
+- `retrieval_scores`: `mean`, `max`, `count`
+
+Example response:
 
 ```json
 {
@@ -730,7 +736,7 @@ This is a working, self-hosted application, actively developed and deployable en
 | JWT auth | ✅ Implemented | Register/login/refresh, bcrypt hashing |
 | Collections & document management | ✅ Implemented | REST endpoints, UI pages |
 | Query result caching | ✅ Implemented | In-memory, 10-minute TTL |
-| Metrics endpoint | ✅ Implemented | Latency, token, retrieval-score aggregates |
+| Metrics endpoint | ✅ Implemented | `latency_ms`, `tokens`, and `retrieval_scores` aggregates |
 | CI pipeline (lint + test + build) | ✅ Implemented | GitHub Actions → GHCR |
 | EC2/S3 deployment scripts | ✅ Implemented | Manual + CI-triggered rollout |
 | Automated test coverage | ⚠️ Expanded | Health, storage, chunking, FAISS store, citation/diversification, and chat SSE; PDF parsing, embeddings, reranking, and ingest still need coverage |
