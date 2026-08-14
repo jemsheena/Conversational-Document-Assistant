@@ -25,12 +25,21 @@ services:
     env_file:
       - .env
     environment:
+      - LLM_PROVIDER=${LLM_PROVIDER:-groq}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - GROQ_MODEL=${GROQ_MODEL:-llama-3.3-70b-versatile}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - HUGGINGFACE_API_KEY=${HUGGINGFACE_API_KEY:-}
+      - HUGGINGFACE_MODEL=${HUGGINGFACE_MODEL:-HuggingFaceH4/zephyr-7b-beta}
+      - LOCAL_LLM_URL=${LOCAL_LLM_URL:-http://localhost:11434/v1}
+      - LOCAL_LLM_MODEL=${LOCAL_LLM_MODEL:-qwen2.5:0.5b}
       - DATABASE_URL=postgresql://${POSTGRES_USER:-rag}:${POSTGRES_PASSWORD:-rag}@postgres:5432/${POSTGRES_DB:-rag}
       - DATA_DIR=./data
       - STORAGE_BACKEND=${STORAGE_BACKEND:-s3}
       - AWS_REGION=${AWS_REGION:-eu-north-1}
       - S3_BUCKET=${S3_BUCKET}
       - S3_PREFIX=${S3_PREFIX:-pdfs/}
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-change-in-production}
     volumes:
       - ./backend/data:/app/data
     depends_on:
