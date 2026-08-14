@@ -85,7 +85,7 @@ class Settings:
     # Rate limits
     CHAT_RATE_LIMIT: int = 10  # requests per minute
     INGEST_MAX_SIZE_MB: int = 50
-    
+
     # Daily token budget per user (cost protection)
     MAX_DAILY_TOKENS_PER_USER: int = int(os.getenv("MAX_DAILY_TOKENS_PER_USER", "1000000"))  # 1M tokens
     DAILY_TOKEN_WARNING_THRESHOLD_PERCENT: int = int(os.getenv("DAILY_TOKEN_WARNING_THRESHOLD_PERCENT", "80"))

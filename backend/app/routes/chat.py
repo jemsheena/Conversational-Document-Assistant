@@ -8,8 +8,8 @@ from app.config import settings
 from app.deps import get_current_user
 from app.dto.chat import ChatRequest
 from app.rate_limiter import check_rate_limit, track_token_usage
-from rag.cache import get_cached_retrieval, set_cached_retrieval
 from rag.agent import run_gemini_agent
+from rag.cache import get_cached_retrieval, set_cached_retrieval
 from rag.embed import get_embeddings
 from rag.generate import stream_llm_response
 from rag.prompt import build_prompt
@@ -30,14 +30,14 @@ async def chat(req: ChatRequest, user: dict = Depends(get_current_user)):
 
     async def generate_stream():
         user_id = user.get("sub", "unknown")
-        
+
         # Rate limit check: per-user, per-minute
         allowed, msg = check_rate_limit(user_id, limit_per_minute=settings.CHAT_RATE_LIMIT)
         if not allowed:
             logger.warning(f"⚠️  Rate limit blocked - {user_id}: {msg}")
             yield f"data: {json.dumps({'token': f'Rate limit exceeded. Max {settings.CHAT_RATE_LIMIT} requests per minute.', 'done': True})}\n\n"
             return
-        
+
         logger.info(
             f"💬 Chat request - Query: {req.query[:100]}..., Collection: {req.collection}, Model: {req.model or 'default'}"
         )
@@ -154,12 +154,12 @@ async def chat(req: ChatRequest, user: dict = Depends(get_current_user)):
 
             # Citation validation (Pipeline Stage 8)
             citation_valid, cited_sources = validate_citations(full_response, len(reranked))
-            
+
             # Track token usage (rough estimate: 1 token ≈ 4 chars)
             tokens_in = len(system_msg + user_msg) // 4
             tokens_out = len(full_response) // 4
             usage_allowed, usage_msg, usage_stats = track_token_usage(user_id, tokens_in, tokens_out)
-            
+
             if not usage_allowed:
                 logger.warning(f"⚠️  Daily token limit - {user_id}: {usage_msg}")
             elif usage_msg != "OK":
