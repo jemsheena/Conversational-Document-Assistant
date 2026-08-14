@@ -1,11 +1,14 @@
 import json
 import os
-from typing import Dict, List, Tuple, Union
+from typing import TYPE_CHECKING, Dict, List, Tuple, Union
 
 import faiss
 import numpy as np
 
 from app.config import settings
+
+if TYPE_CHECKING:
+    from rag.pgvector_store import PgvectorStore
 
 _stores: Dict[str, Union["FaissStore", "PgvectorStore"]] = {}
 
