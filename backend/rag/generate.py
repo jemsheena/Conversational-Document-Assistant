@@ -13,7 +13,7 @@ logger.setLevel(logging.INFO)
 if not logger.handlers:
     handler = logging.StreamHandler()
     handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
-    logger.addHandler(handler)
+logger.addHandler(handler)
 
 
 async def stream_llm_response(
@@ -21,12 +21,16 @@ async def stream_llm_response(
 ) -> AsyncIterator[str]:
     """
     Stream LLM response tokens.
-    Supports Groq, OpenAI API, Hugging Face Inference API, and Local LLMs (Ollama, LM Studio).
+    Supports Groq, OpenAI API, Hugging Face Inference API, Gemini, and Local LLMs
+    (Ollama, LM Studio).
     """
     provider = settings.LLM_PROVIDER.lower()
 
     if provider == "groq":
         async for token in _stream_groq(system_message, user_message, model, max_tokens):
+            yield token
+    elif provider == "gemini":
+        async for token in _stream_gemini(system_message, user_message, model, max_tokens):
             yield token
     elif provider == "huggingface":
         async for token in _stream_huggingface(system_message, user_message, model, max_tokens):
@@ -47,6 +51,72 @@ async def stream_llm_response(
         else:
             async for token in _stream_openai(system_message, user_message, model, max_tokens):
                 yield token
+
+
+def _get_gemini_client():
+    """Create a Gemini client using either API key or Vertex AI auth."""
+    from google import genai
+
+    if settings.GEMINI_USE_VERTEXAI:
+        if not settings.GOOGLE_CLOUD_PROJECT:
+            raise ValueError("GOOGLE_CLOUD_PROJECT must be set when GEMINI_USE_VERTEXAI=true")
+
+        return genai.Client(
+            vertexai=True,
+            project=settings.GOOGLE_CLOUD_PROJECT,
+            location=settings.GOOGLE_CLOUD_LOCATION,
+        )
+
+    if not settings.GEMINI_API_KEY:
+        raise ValueError("GEMINI_API_KEY not set")
+
+    return genai.Client(api_key=settings.GEMINI_API_KEY)
+
+
+async def _stream_gemini(
+    system_message: str, user_message: str, model: str = None, max_tokens: int = 600
+) -> AsyncIterator[str]:
+    """Stream response from Gemini using the Google Gen AI SDK."""
+    model = model or settings.GEMINI_MODEL
+
+    try:
+        from google.genai import types
+
+        client = _get_gemini_client()
+        logger.info(
+            f"✨ Gemini Request - Model: {model}, Vertex AI: {settings.GEMINI_USE_VERTEXAI}"
+        )
+        logger.info(
+            f"📝 Prompt length: {len(system_message)} chars (system) + {len(user_message)} chars (user)"
+        )
+
+        response_stream = await client.aio.models.generate_content_stream(
+            model=model,
+            contents=user_message,
+            config=types.GenerateContentConfig(
+                system_instruction=system_message,
+                max_output_tokens=max_tokens,
+                temperature=0.7,
+            ),
+        )
+
+        async for chunk in response_stream:
+            if getattr(chunk, "text", None):
+                yield chunk.text
+
+    except Exception as e:
+        error_msg = str(e)
+        logger.error(f"❌ Gemini Error: {type(e).__name__}: {error_msg}", exc_info=True)
+
+        if "api key" in error_msg.lower() or "authentication" in error_msg.lower():
+            yield (
+                "\n\n[Error: Gemini authentication failed. Set GEMINI_API_KEY for API key mode "
+                "or enable GEMINI_USE_VERTEXAI with GOOGLE_CLOUD_PROJECT configured.]"
+            )
+        elif "model" in error_msg.lower() and "not found" in error_msg.lower():
+            yield f"\n\n[Error: Model '{model}' not found. Update GEMINI_MODEL in .env]"
+        else:
+            yield f"\n\n[Error: {error_msg}]"
 
 
 async def _stream_groq(

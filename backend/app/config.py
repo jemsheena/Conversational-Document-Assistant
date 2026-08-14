@@ -7,6 +7,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+def _env_bool(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
 class Settings:
     # Database — PostgreSQL in production; override via DATABASE_URL
     DATABASE_URL: str = os.getenv(
@@ -36,7 +43,7 @@ class Settings:
     EMBED_DIM: int = 384  # MiniLM-L6-v2 dimension
     OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
 
-    # LLM Provider (groq, openai, huggingface, local)
+    # LLM Provider (groq, openai, huggingface, local, gemini)
     LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "groq")
     DEFAULT_LLM_MODEL: str = os.getenv("DEFAULT_LLM_MODEL", "llama-3.3-70b-versatile")
     OPENAI_BASE_URL: str = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
@@ -50,6 +57,15 @@ class Settings:
     LOCAL_LLM_URL: str = os.getenv("LOCAL_LLM_URL", "http://localhost:11434/v1")  # Ollama default
     LOCAL_LLM_MODEL: str = os.getenv("LOCAL_LLM_MODEL", "qwen2.5:0.5b")  # Smallest model (~0.5GB)
 
+    # Gemini (Google Gen AI SDK / Vertex AI)
+    GEMINI_API_KEY: Optional[str] = os.getenv("GEMINI_API_KEY")
+    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    GEMINI_USE_VERTEXAI: bool = _env_bool("GEMINI_USE_VERTEXAI", False)
+    GOOGLE_CLOUD_PROJECT: Optional[str] = os.getenv("GOOGLE_CLOUD_PROJECT")
+    GOOGLE_CLOUD_LOCATION: str = os.getenv("GOOGLE_CLOUD_LOCATION", "global")
+    GEMINI_AGENT_MODE: bool = _env_bool("GEMINI_AGENT_MODE", True)
+    GEMINI_AGENT_MAX_STEPS: int = int(os.getenv("GEMINI_AGENT_MAX_STEPS", "3"))
+
     # Hugging Face (free alternative)
     HUGGINGFACE_API_KEY: Optional[str] = os.getenv("HUGGINGFACE_API_KEY")
     # Use gpt2 as default - it's a simple model that works reliably with free inference API
@@ -62,9 +78,17 @@ class Settings:
     DEFAULT_CHUNK_OVERLAP: int = 120
     MIN_RETRIEVAL_SCORE: float = 0.1  # Lowered to allow more lenient answer generation
 
+    # Vector Store Configuration
+    # Options: "faiss" (local, single-instance) or "pgvector" (distributed, AlloyDB)
+    VECTOR_STORE: str = os.getenv("VECTOR_STORE", "faiss")
+
     # Rate limits
     CHAT_RATE_LIMIT: int = 10  # requests per minute
     INGEST_MAX_SIZE_MB: int = 50
+    
+    # Daily token budget per user (cost protection)
+    MAX_DAILY_TOKENS_PER_USER: int = int(os.getenv("MAX_DAILY_TOKENS_PER_USER", "1000000"))  # 1M tokens
+    DAILY_TOKEN_WARNING_THRESHOLD_PERCENT: int = int(os.getenv("DAILY_TOKEN_WARNING_THRESHOLD_PERCENT", "80"))
 
     # Caching (Pipeline Stage 9)
     CACHE_TTL_SECONDS: int = int(os.getenv("CACHE_TTL_SECONDS", "600"))  # 10 minutes

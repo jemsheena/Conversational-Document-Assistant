@@ -48,7 +48,7 @@ The system is designed for:
 
 - **Researchers & analysts** — query reports, papers, and manuals without manual search
 - **Teams** — shared document collections with JWT-based access control
-- **Developers** — pluggable LLM providers (Groq, OpenAI, Hugging Face, local Ollama) and Docker-first deployment
+- **Developers** — pluggable LLM providers (Groq, OpenAI, Hugging Face, local Ollama, Gemini) and Docker-first deployment
 
 | Capability | Details |
 |---|---|
@@ -423,9 +423,11 @@ All environment variables are documented in [`.env.example`](.env.example). Key 
 ### LLM Provider
 
 ```env
-LLM_PROVIDER=groq          # groq | openai | huggingface | local
+LLM_PROVIDER=groq          # groq | openai | huggingface | local | gemini
 GROQ_API_KEY=gsk_...
 GROQ_MODEL=llama-3.3-70b-versatile
+GEMINI_API_KEY=your_gemini_api_key_here
+GEMINI_MODEL=gemini-2.5-flash
 ```
 
 See [GROQ_INTEGRATION.md](GROQ_INTEGRATION.md) for provider switching, model selection, and troubleshooting.
@@ -549,6 +551,18 @@ Manual deploy fallback:
 ```
 
 See [`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml) for the full pipeline definition.
+
+### Production (GCP Cloud Run)
+
+The backend image honors the `PORT` environment variable, so it can run on Cloud Run without a custom wrapper.
+
+Suggested setup:
+
+1. Deploy the backend as a Cloud Run service and configure `DATABASE_URL`, `JWT_SECRET`, `GEMINI_API_KEY` or Vertex AI auth, and storage settings through Secret Manager.
+2. Build the frontend with `VITE_API_BASE` pointing at the backend service URL, then deploy it as a second Cloud Run service.
+3. Set backend CORS to allow the frontend service URL.
+
+See [deploy/deploy-aws.sh](deploy/deploy-aws.sh) for AWS deployment scripts and [docs/frontend-runtime-config-aws.md](docs/frontend-runtime-config-aws.md) for frontend configuration details.
 
 ### Container Images
 
@@ -775,6 +789,10 @@ Ideas worth exploring beyond the current roadmap:
 | Document | Description |
 |---|---|
 | [GROQ_INTEGRATION.md](GROQ_INTEGRATION.md) | Groq setup, model selection, provider switching |
+| [deploy/deploy-aws.sh](deploy/deploy-aws.sh) | AWS EC2 deployment script |
+| [docs/frontend-runtime-config-aws.md](docs/frontend-runtime-config-aws.md) | Frontend dynamic API URL configuration for EC2 |
+| [docs/alloydb-pgvector.md](docs/alloydb-pgvector.md) | RDS for PostgreSQL + pgvector for distributed vector search |
+| [docs/billing-protection.md](docs/billing-protection.md) | API usage limits, cost protection, rate limiting |
 | [`.env.example`](.env.example) | Full environment variable reference |
 | [FastAPI /docs](http://localhost:8000/docs) | Interactive API documentation |
 

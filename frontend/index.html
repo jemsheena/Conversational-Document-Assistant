@@ -8,6 +8,10 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- Runtime config injected by nginx (Cloud Run) or set to empty (dev) -->
+    <script>
+      window.__BACKEND_URL__ = '${BACKEND_URL}' || '';
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

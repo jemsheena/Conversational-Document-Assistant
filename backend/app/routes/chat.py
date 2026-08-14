@@ -7,7 +7,9 @@ from fastapi.responses import StreamingResponse
 from app.config import settings
 from app.deps import get_current_user
 from app.dto.chat import ChatRequest
+from app.rate_limiter import check_rate_limit, track_token_usage
 from rag.cache import get_cached_retrieval, set_cached_retrieval
+from rag.agent import run_gemini_agent
 from rag.embed import get_embeddings
 from rag.generate import stream_llm_response
 from rag.prompt import build_prompt
@@ -27,6 +29,15 @@ async def chat(req: ChatRequest, user: dict = Depends(get_current_user)):
     """Stream chat response with SSE."""
 
     async def generate_stream():
+        user_id = user.get("sub", "unknown")
+        
+        # Rate limit check: per-user, per-minute
+        allowed, msg = check_rate_limit(user_id, limit_per_minute=settings.CHAT_RATE_LIMIT)
+        if not allowed:
+            logger.warning(f"⚠️  Rate limit blocked - {user_id}: {msg}")
+            yield f"data: {json.dumps({'token': f'Rate limit exceeded. Max {settings.CHAT_RATE_LIMIT} requests per minute.', 'done': True})}\n\n"
+            return
+        
         logger.info(
             f"💬 Chat request - Query: {req.query[:100]}..., Collection: {req.collection}, Model: {req.model or 'default'}"
         )
@@ -109,8 +120,31 @@ async def chat(req: ChatRequest, user: dict = Depends(get_current_user)):
                 model = settings.HUGGINGFACE_MODEL
             elif provider == "local":
                 model = settings.LOCAL_LLM_MODEL
+            elif provider == "gemini":
+                model = settings.GEMINI_MODEL
             else:
                 model = req.model or settings.DEFAULT_LLM_MODEL
+
+            if provider == "gemini" and settings.GEMINI_AGENT_MODE:
+                final_response, sources, cited_sources = await run_gemini_agent(
+                    query=req.query,
+                    collection=req.collection or "default",
+                    model=model,
+                    max_tokens=req.max_tokens,
+                    max_steps=settings.GEMINI_AGENT_MAX_STEPS,
+                )
+
+                if final_response:
+                    for token in final_response.split():
+                        yield f"data: {json.dumps({'token': token + ' ', 'done': False})}\n\n"
+
+                citation_valid = True
+                if sources:
+                    citation_valid, cited_sources = validate_citations(final_response, len(sources))
+
+                yield f"data: {json.dumps({'done': True, 'sources': sources, 'citation_valid': citation_valid, 'cited_sources': cited_sources})}\n\n"
+                return
+
             full_response = ""
             async for token in stream_llm_response(
                 system_msg, user_msg, model, max_tokens=req.max_tokens
@@ -120,6 +154,16 @@ async def chat(req: ChatRequest, user: dict = Depends(get_current_user)):
 
             # Citation validation (Pipeline Stage 8)
             citation_valid, cited_sources = validate_citations(full_response, len(reranked))
+            
+            # Track token usage (rough estimate: 1 token ≈ 4 chars)
+            tokens_in = len(system_msg + user_msg) // 4
+            tokens_out = len(full_response) // 4
+            usage_allowed, usage_msg, usage_stats = track_token_usage(user_id, tokens_in, tokens_out)
+            
+            if not usage_allowed:
+                logger.warning(f"⚠️  Daily token limit - {user_id}: {usage_msg}")
+            elif usage_msg != "OK":
+                logger.warning(f"💡 {usage_msg}")
 
             # Final response with sources
             yield f"data: {json.dumps({'done': True, 'sources': sources, 'citation_valid': citation_valid, 'cited_sources': cited_sources})}\n\n"

@@ -1,6 +1,20 @@
 import axios from 'axios'
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/api'
+// Determine API base URL:
+// 1. If running on Cloud Run or prod, use window.__BACKEND_URL__ (injected by nginx)
+// 2. If running on localhost, use /api (proxies via vite or nginx to localhost:8000)
+// 3. Fallback to /api for dev
+const getApiBase = () => {
+  // Cloud Run / production: backend URL injected by nginx
+  if (typeof window !== 'undefined' && window.__BACKEND_URL__) {
+    return window.__BACKEND_URL__
+  }
+  
+  // Development: use /api (proxied by vite dev server or nginx to localhost:8000)
+  return '/api'
+}
+
+const API_BASE = import.meta.env.VITE_API_BASE || getApiBase()
 
 const api = axios.create({
   baseURL: API_BASE,

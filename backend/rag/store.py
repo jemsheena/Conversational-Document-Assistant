@@ -1,13 +1,13 @@
 import json
 import os
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 
 import faiss
 import numpy as np
 
 from app.config import settings
 
-_stores: Dict[str, "FaissStore"] = {}
+_stores: Dict[str, Union["FaissStore", "PgvectorStore"]] = {}
 
 
 class FaissStore:
@@ -79,8 +79,17 @@ class FaissStore:
             json.dump(self.meta, f, ensure_ascii=False, indent=2)
 
 
-def get_or_create_store(collection_id: str, dim: int) -> FaissStore:
-    """Get or create a FAISS store for a collection."""
+def get_or_create_store(collection_id: str, dim: int) -> Union[FaissStore, "PgvectorStore"]:
+    """Get or create a vector store for a collection.
+    
+    Uses the configured VECTOR_STORE setting (faiss or pgvector).
+    """
     if collection_id not in _stores:
-        _stores[collection_id] = FaissStore(collection_id, dim)
+        if settings.VECTOR_STORE.lower() == "pgvector":
+            # Lazy import to avoid hard dependency on pgvector
+            from rag.pgvector_store import PgvectorStore
+            _stores[collection_id] = PgvectorStore(collection_id, dim)
+        else:
+            # Default to FAISS (local, single-instance)
+            _stores[collection_id] = FaissStore(collection_id, dim)
     return _stores[collection_id]
