@@ -2,7 +2,7 @@
 
 A production-ready **Retrieval-Augmented Generation (RAG)** platform for chatting with PDF documents. Upload corpora, ask natural-language questions, and receive **grounded answers with inline citations** and page-level source references — powered by FAISS for local indexing, pgvector support for distributed deployments, cross-encoder reranking, and fast Groq inference.
 
-[![CI/CD](https://github.com/jemsheena/Conversational-Document-Assistant/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/jemsheena/Conversational-Document-Assistant/actions/workflows/ci-cd.yml)
+[![CI/CD](https://github.com/jemsheena/ai-document-assistant/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/jemsheena/ai-document-assistant/actions/workflows/ci-cd.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.11](https://img.shields.io/badge/Python-3.11-blue.svg)](https://www.python.org/)
 [![React 18](https://img.shields.io/badge/React-18-61DAFB.svg)](https://react.dev/)
@@ -326,8 +326,8 @@ Responses are generated strictly from retrieved document chunks. Inline `[1]` ci
 ### 1. Clone and configure
 
 ```bash
-git clone https://github.com/jemsheena/Conversational-Document-Assistant.git
-cd Conversational-Document-Assistant
+git clone https://github.com/jemsheena/ai-document-assistant.git
+cd ai-document-assistant
 cp .env.example .env
 ```
 
@@ -517,7 +517,7 @@ Push to main → Lint → Test → Build Docker images → Push to GHCR → Depl
 
 1. Install Docker and Docker Compose
 2. Attach IAM role with `AmazonS3FullAccess`
-3. Create `~/Conversational-Document-Assistant/.env` from `.env.example`
+3. Create `~/ai-document-assistant/.env` from `.env.example`
 4. Set `STORAGE_BACKEND=s3` and `S3_BUCKET`
 
 **GitHub secrets required:**
@@ -562,7 +562,7 @@ See [deploy/deploy-aws.sh](deploy/deploy-aws.sh) for AWS deployment scripts and 
 ## Project Structure
 
 ```
-Conversational-Document-Assistant/
+ai-document-assistant/
 ├── backend/
 │   ├── app/
 │   │   ├── routes/          # API endpoints (auth, chat, ingest, search, …)
