@@ -16,8 +16,8 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from rag.embed import get_embeddings
-from rag.store import FaissStore
+from rag.embed import get_embeddings  # noqa: E402
+from rag.store import FaissStore  # noqa: E402
 
 
 def _default_queries() -> List[str]:
