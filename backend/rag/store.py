@@ -1,11 +1,16 @@
 import json
+import logging
 import os
 from typing import TYPE_CHECKING, Dict, List, Tuple, Union
 
 import faiss
 import numpy as np
+from sqlalchemy import text
 
 from app.config import settings
+from app.database import SessionLocal
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from rag.pgvector_store import PgvectorStore
@@ -85,15 +90,40 @@ class FaissStore:
 def get_or_create_store(collection_id: str, dim: int) -> Union[FaissStore, "PgvectorStore"]:
     """Get or create a vector store for a collection.
 
-    Uses the configured VECTOR_STORE setting (faiss or pgvector).
+    Uses the configured VECTOR_STORE setting (faiss or pgvector) but falls back to
+    FAISS when pgvector is configured but not actually usable (e.g., the schema is
+    incomplete in a dev or test environment).
     """
-    if collection_id not in _stores:
-        if settings.VECTOR_STORE.lower() == "pgvector":
-            # Lazy import to avoid hard dependency on pgvector
+    if collection_id in _stores:
+        return _stores[collection_id]
+
+    if settings.VECTOR_STORE.lower() == "pgvector":
+        # Lazy import to avoid hard dependency on pgvector
+        try:
             from rag.pgvector_store import PgvectorStore
 
-            _stores[collection_id] = PgvectorStore(collection_id, dim)
-        else:
-            # Default to FAISS (local, single-instance)
+            db = SessionLocal()
+            try:
+                # Verify pgvector schema is actually present. Checking only for the
+                # table existence is not enough; tests/dev often have a chunks table
+                # without the embedding column yet.
+                db.execute(text("SELECT embedding FROM chunks LIMIT 1"))
+                _stores[collection_id] = PgvectorStore(collection_id, dim)
+                logger.info(f"Using pgvector store for collection '{collection_id}'")
+            except Exception:
+                logger.warning(
+                    f"pgvector configured but unavailable for collection '{collection_id}'; falling back to FAISS"
+                )
+                _stores[collection_id] = FaissStore(collection_id, dim)
+            finally:
+                db.close()
+        except Exception:
+            logger.warning(
+                f"pgvector backend unavailable for collection '{collection_id}'; falling back to FAISS"
+            )
             _stores[collection_id] = FaissStore(collection_id, dim)
+    else:
+        # Default to FAISS (local, single-instance)
+        _stores[collection_id] = FaissStore(collection_id, dim)
+
     return _stores[collection_id]

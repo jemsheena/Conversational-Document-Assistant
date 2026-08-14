@@ -64,7 +64,7 @@ The system is designed for:
 
 ## Motivation
 
-Searching long PDFs by hand — reports, manuals, papers — is slow, and generic chatbots answer from memory rather than from the document in front of you, which invites hallucination. This project was built to explore how a **retrieval-grounded** chat experience can be made both accurate and fast: every answer is traced back to a specific page and passage, and the retrieval pipeline (embedding → FAISS search → cross-encoder reranking) was tuned to keep end-to-end latency in the low single-digit seconds even on CPU-only hardware. It also served as a practical exercise in building a full production-style stack — auth, streaming responses, CI/CD, and cloud deployment — around a non-trivial ML component rather than a toy CRUD app.
+Searching long PDFs by hand — reports, manuals, papers — is slow, and generic chatbots answer from memory rather than from the document in front of you, which invites hallucination. This project was built to explore how a **retrieval-grounded** chat experience can be made both accurate and fast through a modular RAG pipeline that grounds answers in actual document content. It also served as a practical exercise in building a full production-style stack — auth, streaming responses, CI/CD, and cloud deployment — around a non-trivial ML component rather than a toy CRUD app.
 
 ---
 

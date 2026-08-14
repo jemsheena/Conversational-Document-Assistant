@@ -42,6 +42,41 @@ async def chat(req: ChatRequest, user: dict = Depends(get_current_user)):
             f"💬 Chat request - Query: {req.query[:100]}..., Collection: {req.collection}, Model: {req.model or 'default'}"
         )
         try:
+            # Select provider and model first
+            provider = settings.LLM_PROVIDER.lower()
+            if provider == "huggingface":
+                model = settings.HUGGINGFACE_MODEL
+            elif provider == "local":
+                model = settings.LOCAL_LLM_MODEL
+            elif provider == "gemini":
+                model = settings.GEMINI_MODEL
+            else:
+                model = req.model or settings.DEFAULT_LLM_MODEL
+
+            # Gemini agent mode performs its own retrieval via tools, so skip the standard
+            # retrieval pipeline entirely when that mode is enabled.
+            if provider == "gemini" and settings.GEMINI_AGENT_MODE:
+                if not req.collection:
+                    req.collection = "default"
+
+                final_response, sources, cited_sources = await run_gemini_agent(
+                    query=req.query,
+                    collection=req.collection,
+                    model=model,
+                    max_tokens=req.max_tokens,
+                    max_steps=settings.GEMINI_AGENT_MAX_STEPS,
+                )
+
+                if final_response:
+                    yield f"data: {json.dumps({'token': final_response, 'done': False})}\n\n"
+
+                citation_valid = True
+                if sources:
+                    citation_valid, cited_sources = validate_citations(final_response, len(sources))
+
+                yield f"data: {json.dumps({'done': True, 'sources': sources, 'citation_valid': citation_valid, 'cited_sources': cited_sources})}\n\n"
+                return
+
             # Check cache (Pipeline Stage 9)
             query_hash = hash_query(req.query, req.collection)
             cached_passages = get_cached_retrieval(query_hash)
@@ -110,39 +145,6 @@ async def chat(req: ChatRequest, user: dict = Depends(get_current_user)):
                 and "localhost" not in settings.OPENAI_BASE_URL
             ):
                 yield f"data: {json.dumps({'error': 'OPENAI_API_KEY not configured. Please set it in .env, use LLM_PROVIDER=local for local LLM, or use LLM_PROVIDER=huggingface for free alternative.', 'done': True})}\n\n"
-                return
-
-            # Select model based on provider.
-            # The frontend currently sends OpenAI-style model names by default; for non-OpenAI providers
-            # we should use the provider-specific configured model to avoid invalid routing errors.
-            provider = settings.LLM_PROVIDER.lower()
-            if provider == "huggingface":
-                model = settings.HUGGINGFACE_MODEL
-            elif provider == "local":
-                model = settings.LOCAL_LLM_MODEL
-            elif provider == "gemini":
-                model = settings.GEMINI_MODEL
-            else:
-                model = req.model or settings.DEFAULT_LLM_MODEL
-
-            if provider == "gemini" and settings.GEMINI_AGENT_MODE:
-                final_response, sources, cited_sources = await run_gemini_agent(
-                    query=req.query,
-                    collection=req.collection or "default",
-                    model=model,
-                    max_tokens=req.max_tokens,
-                    max_steps=settings.GEMINI_AGENT_MAX_STEPS,
-                )
-
-                if final_response:
-                    for token in final_response.split():
-                        yield f"data: {json.dumps({'token': token + ' ', 'done': False})}\n\n"
-
-                citation_valid = True
-                if sources:
-                    citation_valid, cited_sources = validate_citations(final_response, len(sources))
-
-                yield f"data: {json.dumps({'done': True, 'sources': sources, 'citation_valid': citation_valid, 'cited_sources': cited_sources})}\n\n"
                 return
 
             full_response = ""
