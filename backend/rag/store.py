@@ -91,6 +91,7 @@ def get_or_create_store(collection_id: str, dim: int) -> Union[FaissStore, "Pgve
         if settings.VECTOR_STORE.lower() == "pgvector":
             # Lazy import to avoid hard dependency on pgvector
             from rag.pgvector_store import PgvectorStore
+
             _stores[collection_id] = PgvectorStore(collection_id, dim)
         else:
             # Default to FAISS (local, single-instance)

@@ -16,7 +16,9 @@ from app.config import settings
 request_log: Dict[str, list] = defaultdict(list)
 
 # Daily token tracker: {user_id: {"tokens_used": N, "reset_at": timestamp}}
-daily_tokens: Dict[str, dict] = defaultdict(lambda: {"tokens_used": 0, "reset_at": time.time() + 86400})
+daily_tokens: Dict[str, dict] = defaultdict(
+    lambda: {"tokens_used": 0, "reset_at": time.time() + 86400}
+)
 
 
 def check_rate_limit(user_id: str, limit_per_minute: int) -> Tuple[bool, str]:

@@ -8,6 +8,7 @@ This migration adds pgvector extension and embedding vector storage
 to the chunks table, enabling distributed vector search on AlloyDB
 as an alternative to local FAISS indices.
 """
+
 import sqlalchemy as sa
 
 from alembic import op

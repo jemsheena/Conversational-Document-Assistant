@@ -158,7 +158,9 @@ async def chat(req: ChatRequest, user: dict = Depends(get_current_user)):
             # Track token usage (rough estimate: 1 token ≈ 4 chars)
             tokens_in = len(system_msg + user_msg) // 4
             tokens_out = len(full_response) // 4
-            usage_allowed, usage_msg, usage_stats = track_token_usage(user_id, tokens_in, tokens_out)
+            usage_allowed, usage_msg, usage_stats = track_token_usage(
+                user_id, tokens_in, tokens_out
+            )
 
             if not usage_allowed:
                 logger.warning(f"⚠️  Daily token limit - {user_id}: {usage_msg}")

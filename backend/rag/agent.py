@@ -46,7 +46,10 @@ def _tool_declarations() -> List[Dict[str, Any]]:
                     "collection": {"type": "string", "description": "Collection ID to search"},
                     "query": {"type": "string", "description": "User question or search query"},
                     "k": {"type": "integer", "description": "Number of passages to retrieve"},
-                    "rerank_k": {"type": "integer", "description": "Number of passages to keep after reranking"},
+                    "rerank_k": {
+                        "type": "integer",
+                        "description": "Number of passages to keep after reranking",
+                    },
                 },
                 "required": ["collection", "query"],
             },
@@ -59,7 +62,10 @@ def _tool_declarations() -> List[Dict[str, Any]]:
                 "type": "object",
                 "properties": {
                     "query": {"type": "string", "description": "Search query"},
-                    "max_results": {"type": "integer", "description": "Maximum number of results to return"},
+                    "max_results": {
+                        "type": "integer",
+                        "description": "Maximum number of results to return",
+                    },
                 },
                 "required": ["query"],
             },
@@ -109,7 +115,9 @@ def _format_passages(passages: List[Dict[str, Any]], prefix: str = "Source") -> 
     blocks = []
     for i, passage in enumerate(passages, 1):
         if "url" in passage:
-            source_line = f"({prefix}: {passage.get('title', 'web result')} {passage.get('url', '')})"
+            source_line = (
+                f"({prefix}: {passage.get('title', 'web result')} {passage.get('url', '')})"
+            )
         else:
             source_line = f"({prefix}: {passage.get('doc', 'unknown')} p.{passage.get('page', 0)})"
         blocks.append(f"[{i}] {passage.get('text', '')}\n{source_line}")
@@ -125,7 +133,9 @@ def _to_source_list(passages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return sources
 
 
-async def _search_documents(collection: str, query: str, k: int = 12, rerank_k: int = 6) -> ToolResult:
+async def _search_documents(
+    collection: str, query: str, k: int = 12, rerank_k: int = 6
+) -> ToolResult:
     store = get_or_create_store(collection or "default", dim=settings.EMBED_DIM)
     query_embed = get_embeddings([query], model_name=settings.EMBED_MODEL)[0]
     retrieved = store.search(query_embed, k=k)
@@ -223,7 +233,9 @@ async def _execute_tool(name: str, args: Dict[str, Any], query: str, collection:
             rerank_k=int(args.get("rerank_k") or settings.DEFAULT_RERANK_K),
         )
     if name == "web_search":
-        return await _web_search(query=args.get("query") or query, max_results=int(args.get("max_results") or 5))
+        return await _web_search(
+            query=args.get("query") or query, max_results=int(args.get("max_results") or 5)
+        )
     if name == "get_metrics":
         return await _get_metrics()
     raise ValueError(f"Unsupported tool: {name}")
@@ -328,7 +340,9 @@ async def run_gemini_agent(
             )
             contents.append(types.Content(role="user", parts=[function_response]))
     else:
-        final_text = final_text or "I couldn't complete the tool loop within the configured step limit."
+        final_text = (
+            final_text or "I couldn't complete the tool loop within the configured step limit."
+        )
 
     if not final_text:
         final_text = "I couldn't produce a final answer from the available tool results."

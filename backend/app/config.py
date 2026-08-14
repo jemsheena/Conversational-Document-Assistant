@@ -87,8 +87,12 @@ class Settings:
     INGEST_MAX_SIZE_MB: int = 50
 
     # Daily token budget per user (cost protection)
-    MAX_DAILY_TOKENS_PER_USER: int = int(os.getenv("MAX_DAILY_TOKENS_PER_USER", "1000000"))  # 1M tokens
-    DAILY_TOKEN_WARNING_THRESHOLD_PERCENT: int = int(os.getenv("DAILY_TOKEN_WARNING_THRESHOLD_PERCENT", "80"))
+    MAX_DAILY_TOKENS_PER_USER: int = int(
+        os.getenv("MAX_DAILY_TOKENS_PER_USER", "1000000")
+    )  # 1M tokens
+    DAILY_TOKEN_WARNING_THRESHOLD_PERCENT: int = int(
+        os.getenv("DAILY_TOKEN_WARNING_THRESHOLD_PERCENT", "80")
+    )
 
     # Caching (Pipeline Stage 9)
     CACHE_TTL_SECONDS: int = int(os.getenv("CACHE_TTL_SECONDS", "600"))  # 10 minutes

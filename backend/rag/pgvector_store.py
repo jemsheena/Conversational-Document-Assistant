@@ -22,6 +22,7 @@ from app.models import Chunk
 
 try:
     from pgvector.sqlalchemy import Vector
+
     PGVECTOR_AVAILABLE = True
 except ImportError:
     PGVECTOR_AVAILABLE = False
@@ -41,17 +42,13 @@ class PgvectorStore:
             dim: Vector dimension (should be 384 for MiniLM-L6-v2)
         """
         if not PGVECTOR_AVAILABLE:
-            raise ImportError(
-                "pgvector package not installed. Install with: pip install pgvector"
-            )
+            raise ImportError("pgvector package not installed. Install with: pip install pgvector")
 
         self.collection_id = collection_id
         self.dim = dim
         self.db: Optional[Session] = None
 
-        logger.info(
-            f"🔌 Initialized PgvectorStore for collection '{collection_id}' (dim={dim})"
-        )
+        logger.info(f"🔌 Initialized PgvectorStore for collection '{collection_id}' (dim={dim})")
 
     def _get_session(self) -> Session:
         """Get or create database session."""

@@ -38,7 +38,9 @@ def _model_for_provider(provider: str) -> str:
     return settings.DEFAULT_LLM_MODEL
 
 
-async def _run_one(provider: str, query: str, system_message: str, max_tokens: int) -> BenchmarkResult:
+async def _run_one(
+    provider: str, query: str, system_message: str, max_tokens: int
+) -> BenchmarkResult:
     original_provider = settings.LLM_PROVIDER
     settings.LLM_PROVIDER = provider
     model = _model_for_provider(provider)

@@ -67,9 +67,11 @@ class Chunk(Base):
     bbox: Mapped[str | None] = mapped_column(String, nullable=True)
     tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # pgvector embedding (384 dims for MiniLM-L6-v2) — only used with pgvector store
-    embedding: Mapped[list | None] = mapped_column(
-        Vector(384) if Vector else Text, nullable=True
-    ) if Vector else mapped_column(Text, nullable=True)
+    embedding: Mapped[list | None] = (
+        mapped_column(Vector(384) if Vector else Text, nullable=True)
+        if Vector
+        else mapped_column(Text, nullable=True)
+    )
 
 
 class Chat(Base):

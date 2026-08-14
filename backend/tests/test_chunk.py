@@ -24,12 +24,14 @@ def test_chunking_is_deterministic_and_respects_overlap(fake_cl100k_encoding):
     assert len(first_run) == 3
     assert [len(chunk) for chunk in first_run] == [900, 900, 140]
     assert all(len(chunk) <= settings.DEFAULT_CHUNK_SIZE for chunk in first_run)
-    assert first_run[0][-settings.DEFAULT_CHUNK_OVERLAP :] == first_run[1][
-        : settings.DEFAULT_CHUNK_OVERLAP
-    ]
-    assert first_run[1][-settings.DEFAULT_CHUNK_OVERLAP :] == first_run[2][
-        : settings.DEFAULT_CHUNK_OVERLAP
-    ]
+    assert (
+        first_run[0][-settings.DEFAULT_CHUNK_OVERLAP :]
+        == first_run[1][: settings.DEFAULT_CHUNK_OVERLAP]
+    )
+    assert (
+        first_run[1][-settings.DEFAULT_CHUNK_OVERLAP :]
+        == first_run[2][: settings.DEFAULT_CHUNK_OVERLAP]
+    )
 
 
 def test_chunk_handles_text_without_natural_break_points(fake_cl100k_encoding):
