@@ -81,7 +81,7 @@ class FaissStore:
 
 def get_or_create_store(collection_id: str, dim: int) -> Union[FaissStore, "PgvectorStore"]:
     """Get or create a vector store for a collection.
-    
+
     Uses the configured VECTOR_STORE setting (faiss or pgvector).
     """
     if collection_id not in _stores:
