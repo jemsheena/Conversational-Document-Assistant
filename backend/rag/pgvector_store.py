@@ -11,8 +11,14 @@ Requirements:
 """
 
 import logging
-from typing import List, Tuple, Dict, Optional
+from typing import Dict, List, Optional, Tuple
+
 import numpy as np
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.database import SessionLocal
+from app.models import Chunk
 
 try:
     from pgvector.sqlalchemy import Vector
@@ -20,13 +26,6 @@ try:
 except ImportError:
     PGVECTOR_AVAILABLE = False
     Vector = None
-
-from sqlalchemy import and_, select, func
-from sqlalchemy.orm import Session
-
-from app.database import SessionLocal
-from app.models import Chunk
-from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +35,7 @@ class PgvectorStore:
 
     def __init__(self, collection_id: str, dim: int):
         """Initialize pgvector store for a collection.
-        
+
         Args:
             collection_id: Collection identifier
             dim: Vector dimension (should be 384 for MiniLM-L6-v2)
@@ -45,11 +44,11 @@ class PgvectorStore:
             raise ImportError(
                 "pgvector package not installed. Install with: pip install pgvector"
             )
-        
+
         self.collection_id = collection_id
         self.dim = dim
         self.db: Optional[Session] = None
-        
+
         logger.info(
             f"🔌 Initialized PgvectorStore for collection '{collection_id}' (dim={dim})"
         )
@@ -62,7 +61,7 @@ class PgvectorStore:
 
     def add(self, vectors: np.ndarray, metas: List[Dict]):
         """Add vectors and metadata to the database.
-        
+
         Args:
             vectors: numpy array of shape (n, dim), should be normalized
             metas: list of metadata dicts with keys: doc, page, text, etc.
@@ -81,7 +80,7 @@ class PgvectorStore:
         vectors = vectors / (norms + 1e-8)
 
         db = self._get_session()
-        
+
         try:
             for vector, meta in zip(vectors, metas):
                 chunk = Chunk(
@@ -95,7 +94,7 @@ class PgvectorStore:
                     embedding=vector.tolist(),  # pgvector stores as list
                 )
                 db.add(chunk)
-            
+
             db.commit()
             logger.info(
                 f"✅ Added {len(vectors)} vectors to PgvectorStore (collection={self.collection_id})"
@@ -110,11 +109,11 @@ class PgvectorStore:
 
     def search(self, query_vector: np.ndarray, k: int = 12) -> List[Tuple[Dict, float]]:
         """Search for similar vectors using cosine similarity.
-        
+
         Args:
             query_vector: query embedding (1, dim)
             k: number of results to return
-            
+
         Returns:
             List of (metadata, score) tuples, ordered by similarity (descending)
         """
@@ -130,7 +129,7 @@ class PgvectorStore:
         query_vector_list = query_vector.tolist()
 
         db = self._get_session()
-        
+
         try:
             # pgvector cosine_distance returns 0.0 for identical vectors and increases
             # as the vectors become less similar. For normalized vectors, convert to a
@@ -171,13 +170,13 @@ class PgvectorStore:
 
     def save(self):
         """Persist store (no-op for pgvector; data already in database)."""
-        logger.info(f"💾 PgvectorStore data already persisted in database")
+        logger.info("💾 PgvectorStore data already persisted in database")
         pass
 
 
 def get_or_create_pgvector_store(collection_id: str, dim: int) -> PgvectorStore:
     """Get or create a pgvector store for a collection.
-    
+
     This is the factory function for pgvector. Use get_or_create_store()
     from store.py for provider-agnostic access.
     """
