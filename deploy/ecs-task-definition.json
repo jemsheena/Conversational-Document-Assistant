@@ -35,6 +35,10 @@
       ],
       "secrets": [
         {
+          "name": "GROQ_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:<REGION>:<ACCOUNT_ID>:secret:rag/groq-api-key"
+        },
+        {
           "name": "OPENAI_API_KEY",
           "valueFrom": "arn:aws:secretsmanager:<REGION>:<ACCOUNT_ID>:secret:rag/openai-api-key"
         },
