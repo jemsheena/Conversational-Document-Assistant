@@ -1,6 +1,6 @@
 # Conversational Document Assistant
 
-A production-ready **Retrieval-Augmented Generation (RAG)** platform for chatting with PDF documents. Upload corpora, ask natural-language questions, and receive **grounded answers with inline citations** and page-level source references — powered by FAISS vector search, cross-encoder reranking, and ultra-fast Groq inference.
+A production-ready **Retrieval-Augmented Generation (RAG)** platform for chatting with PDF documents. Upload corpora, ask natural-language questions, and receive **grounded answers with inline citations** and page-level source references — powered by FAISS for local indexing, pgvector support for distributed deployments, cross-encoder reranking, and fast Groq inference.
 
 [![CI/CD](https://github.com/jemsheena/Conversational-Document-Assistant/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/jemsheena/Conversational-Document-Assistant/actions/workflows/ci-cd.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -56,8 +56,8 @@ The system is designed for:
 | **Max upload size** | 50 MB per file |
 | **Default LLM** | Groq `llama-3.3-70b-versatile` (128K context) |
 | **Embedding model** | `sentence-transformers/all-MiniLM-L6-v2` (384-dim) |
-| **Vector store** | FAISS (cosine similarity, per-collection indices) |
-| **Database** | PostgreSQL 16 |
+| **Vector store** | FAISS by default (local); pgvector supported for distributed deployments |
+| **Database** | PostgreSQL (production); pgvector extension for vector search |
 | **Storage** | Local disk (dev) or AWS S3 (production) |
 
 ---
@@ -73,7 +73,7 @@ Searching long PDFs by hand — reports, manuals, papers — is slow, and generi
 ### Core RAG
 
 - **Token-aware chunking** — 900-token chunks with 120-token overlap (tiktoken `cl100k_base`)
-- **Hybrid retrieval** — FAISS top-K search (default K=12) + cross-encoder reranking (top-6)
+- **Hybrid retrieval** — FAISS top-K search by default (K=12), pgvector as scalable alternative, cross-encoder reranking (top-6)
 - **Passage diversification** — limits per document/page to avoid redundant context
 - **Citation enforcement** — inline `[1]`, `[2]` references with post-generation validation
 - **Query caching** — 10-minute TTL on retrieval results for repeated queries
@@ -149,7 +149,7 @@ flowchart TB
 | Auth | python-jose, bcrypt | Registration, login, token refresh |
 | ORM | SQLAlchemy 2.0, Alembic | Users, collections, documents, chats |
 | Embeddings | Sentence-Transformers | Dense vector encoding (384-dim) |
-| Vector DB | FAISS (IndexFlatIP) | Per-collection cosine similarity search |
+| Vector DB | FAISS (local, IndexFlatIP) or pgvector (PostgreSQL) | Per-collection cosine similarity search |
 | Reranker | Cross-Encoder MS MARCO MiniLM | Query-passage relevance rescoring |
 | LLM | Groq / OpenAI / HF / Ollama | Grounded answer generation |
 | Storage | boto3 / local filesystem | PDF blob persistence |
@@ -167,7 +167,7 @@ The retrieval pipeline follows nine documented stages:
 | 2 | **Parse** | Extract per-page text with PyMuPDF |
 | 3 | **Chunk** | Split into 900-token segments with 120-token overlap |
 | 4 | **Embed** | Encode chunks with MiniLM-L6-v2 (normalized vectors) |
-| 5 | **Index & Retrieve** | FAISS search (K=12) → cross-encoder rerank (K=6) → diversify |
+| 5 | **Index & Retrieve** | Vector search (FAISS or pgvector, K=12) → cross-encoder rerank (K=6) → diversify |
 | 6 | **Prompt Build** | Inject numbered sources; truncate to 8K token budget |
 | 7 | **Generate** | Stream LLM response with grounded system instructions |
 | 8 | **Validate Citations** | Verify `[N]` references map to valid source indices |
@@ -190,61 +190,47 @@ The retrieval pipeline follows nine documented stages:
 
 ## Model Stack & Performance
 
-### Embedding Model — `all-MiniLM-L6-v2`
+This project uses a **layered RAG approach** tuned for accuracy and speed:
 
+- **Embedding:** `sentence-transformers/all-MiniLM-L6-v2` (384-dim, ~22M parameters)
+- **Vector search:** FAISS by default (local, single-instance); pgvector supported for distributed deployments
+- **Reranking:** Cross-encoder MS MARCO MiniLM for re-scoring top-K candidates
+- **LLM:** Groq (default, ~1s latency); OpenAI, Hugging Face, and Ollama also supported
+
+**Detailed model specs, latency estimates, and provider comparisons** → see [docs/performance.md](docs/performance.md)
+
+### Measured Local Benchmark
+
+To get **real numbers** from this repository, run:
+
+```bash
+cd backend
+python scripts/measure_pipeline.py --repeats 3
+```
+
+**Actual measured results** from local run (Windows 11, Python 3.13, sentence-transformers/all-MiniLM-L6-v2):
+
+#### Embedding Performance
 | Metric | Value |
 |---|---|
-| Dimensions | 384 |
-| Parameters | ~22M |
-| Max sequence length | 256 tokens |
-| STS Benchmark (Spearman) | ~0.84 |
-| Inference speed | ~3,000 sentences/sec (CPU) |
+| Average | 14.91 ms |
+| Min | 12.03 ms |
+| Max | 18.27 ms |
+| P95 | 15.18 ms |
 
-*Source: [Sentence-Transformers model card](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2)*
-
-### Reranker — `cross-encoder/ms-marco-MiniLM-L-6-v2`
-
+#### Vector Search Performance (FAISS, K=5)
 | Metric | Value |
 |---|---|
-| Parameters | ~22M |
-| MS MARCO MRR@10 | ~0.387 |
-| MS MARCO NDCG@10 | ~0.431 |
-| Latency (CPU, batch=1) | ~15–25 ms per pair |
+| Average | 0.45 ms |
+| Min | 0.05 ms |
+| Max | 2.76 ms |
+| P95 | 0.47 ms |
 
-*Source: [Cross-Encoder MS MARCO model card](https://huggingface.co/cross-encoder/ms-marco-MiniLM-L-6-v2)*
-
-### LLM Provider — Groq (Default)
-
-| Model | Context | Avg Latency | Throughput | Best For |
-|---|---|---|---|---|
-| `llama-3.3-70b-versatile` | 128K | ~1.0s | 300–500 tok/s | **Production Q&A (recommended)** |
-| `llama-3.1-70b-versatile` | 128K | ~1.2s | 250–400 tok/s | High-quality alternative |
-| `mixtral-8x7b-32768` | 32K | ~0.5s | 500–800 tok/s | Lowest latency |
-| `gemma2-9b-it` | 8K | ~0.3s | 600–900 tok/s | Lightweight queries |
-
-### Provider Comparison
-
-| Provider | Avg Response Time | Tokens/Second | Cost (per 1M tokens) |
-|---|---|---|---|
-| **Groq (Mixtral)** | ~0.5s | 500–800 | $0.05–0.27 |
-| **Groq (Llama 3.3)** | ~1.0s | 300–500 | $0.05–0.27 |
-| OpenAI GPT-4o-mini | ~2–3s | 80–120 | $0.15 in / $0.60 out |
-| OpenAI GPT-4 | ~3–5s | 50–100 | $5.00 in / $15.00 out |
-| Hugging Face (free) | ~10–30s | 10–30 | Free tier |
-
-### End-to-End Latency (Typical)
-
-| Phase | Duration (CPU, single query) |
-|---|---|
-| Embedding query | ~5–15 ms |
-| FAISS search (K=12) | ~1–5 ms |
-| Cross-encoder rerank (12 pairs) | ~150–300 ms |
-| Prompt assembly | ~1–5 ms |
-| LLM first token (Groq) | ~200–500 ms |
-| Full response (600 tokens) | ~1–2s |
-| **Total (retrieval → complete answer)** | **~1.5–3s** |
-
-> **Note:** Latency varies with document corpus size, hardware, and LLM provider. Cached queries skip retrieval/reranking (~600s TTL).
+#### Key Observations
+- **Per-query embedding:** 12–18 ms on CPU (after initial model load, one-time: ~26s)
+- **Vector retrieval:** sub-millisecond
+- **Real E2E latency** also includes reranker (~150–300 ms) and LLM generation (~1–2s)
+- **These are measured values** from running `measure_pipeline.py` on this codebase; for vendor estimates, see [docs/performance.md](docs/performance.md)
 
 ### Citation Quality
 
